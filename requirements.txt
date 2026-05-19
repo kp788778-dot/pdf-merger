@@ -1,7 +1,0 @@
-streamlit
-pypdf
-zipfile
-io
-pathlib
-tempfile
-os
