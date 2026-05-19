@@ -6,10 +6,13 @@ from pypdf import PdfWriter, PdfReader
 
 st.set_page_config(page_title="PDF Folder Merger", page_icon="📄", layout="centered")
 
-st.title("📄 PDF Folder Merger")
+st.title("PDF Folder Merger")
 st.markdown(
-    "Upload a **ZIP file** containing folders of PDFs. "
-    "Each folder's PDFs will be merged into one PDF named after that folder."
+    "How to use this:"
+    "1. Go into sharepoint and download the asphalt files as a ZIP. Best practice is to download all folders at once in one ZIP."
+    "2.Upload a ZIP file containing folders of PDFs. "
+    "3.Each folder's PDFs will be merged into one PDF named after that folder."
+    "Any questions, ask Kieran")
 )
 
 def get_pdf_groups(zip_file: zipfile.ZipFile) -> dict[str, list[str]]:
