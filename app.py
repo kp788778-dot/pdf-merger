@@ -10,8 +10,8 @@ st.title("PDF Folder Merger")
 st.markdown(
     """"How to use this:
     1. Go into sharepoint and download the asphalt files as a ZIP. Best practice is to download all folders at once in one ZIP.
-    2.Upload a ZIP file containing folders of PDFs. \n
-    3.Each folder's PDFs will be merged into one PDF named after that folder.\n
+    2.Upload a ZIP file containing folders of PDFs.
+    3.Each folder's PDFs will be merged into one PDF named after that folder.
     Any questions, ask Kieran"""
 )
 
