@@ -210,7 +210,12 @@ if uploaded_file is not None:
 
                 st.subheader(folder_name)
 
-                expected_lot = folder_name.upper()
+                folder_lots = extract_lot_numbers(folder_name)
+
+                if folder_lots:
+                    expected_lot = folder_lots[0]
+                else:
+                    expected_lot = folder_name.upper()
 
                 pass_count = 0
                 fail_count = 0
