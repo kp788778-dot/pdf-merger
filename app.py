@@ -2,6 +2,7 @@ import streamlit as st
 import zipfile
 import io
 import re
+import pandas as pd
 from collections import defaultdict
 from pypdf import PdfWriter, PdfReader
 
@@ -203,7 +204,9 @@ if uploaded_file is not None:
             st.markdown(
                 f"Found **{len(groups)}** folder(s)"
             )
-
+            
+            validation_matrix = {}
+            
             for folder_name, pdf_paths in sorted(groups.items()):
 
                 st.divider()
@@ -222,6 +225,8 @@ if uploaded_file is not None:
 
                 validation_results = []
 
+                matrix_messages = []
+                
                 for pdf_path in pdf_paths:
 
                     with zf.open(pdf_path) as f:
@@ -248,30 +253,41 @@ if uploaded_file is not None:
                         if status == "PASS":
 
                             pass_count += 1
-
-                            st.success(
-                                f"✓ {filename}"
-                            )
-
+                        
+                            msg = f"✓ {filename}"
+                        
+                            matrix_messages.append(msg)
+                        
+                            st.success(msg)
+                        
                         elif status == "NO_TEXT":
-
-                            st.info(
-                                f"ℹ {filename} (scanned PDF or no text)"
-                            )
-
+                        
+                            msg = f"ℹ {filename} (scanned PDF or no text)"
+                        
+                            matrix_messages.append(msg)
+                        
+                            st.info(msg)
+                        
                         elif status == "NO_LOT_FOUND":
-
-                            st.warning(
-                                f"⚠ {filename} (no lot number found)"
-                            )
-
+                        
+                            msg = f"⚠ {filename} (no lot number found)"
+                        
+                            matrix_messages.append(msg)
+                        
+                            st.warning(msg)
+                        
                         else:
-
+                        
                             fail_count += 1
-
-                            st.error(
-                                f"✗ {filename} | Found: {', '.join(result['lots'])}"
+                        
+                            msg = (
+                                f"✗ {filename} | Found: "
+                                f"{', '.join(result['lots'])}"
                             )
+                        
+                            matrix_messages.append(msg)
+                        
+                            st.error(msg)
 
                 st.write(
                     f"Validation Summary: "
@@ -279,6 +295,8 @@ if uploaded_file is not None:
                     f"{fail_count} failed"
                 )
 
+                validation_matrix[folder_name] = matrix_messages
+                
                 with st.spinner(
                     f"Merging {folder_name}..."
                 ):
@@ -295,6 +313,127 @@ if uploaded_file is not None:
                     mime="application/pdf",
                     key=folder_name
                 )
+
+if uploaded_file is not None and validation_matrix:
+
+    st.divider()
+
+    st.header("QA Validation Matrix")
+
+    max_rows = max(
+        len(v)
+        for v in validation_matrix.values()
+    )
+
+    matrix_data = {}
+
+    for lot_name, messages in validation_matrix.items():
+
+        padded = messages + [""] * (
+            max_rows - len(messages)
+        )
+
+        matrix_data[lot_name] = padded
+
+    matrix_df = pd.DataFrame(matrix_data)
+
+    matrix_df.index = [
+        f"PDF {i}"
+        for i in range(len(matrix_df))
+    ]
+
+    def colour_cells(val):
+
+        if str(val).startswith("✓"):
+            return "background-color: #d4edda"
+
+        if str(val).startswith("✗"):
+            return "background-color: #f8d7da"
+
+        if str(val).startswith("⚠"):
+            return "background-color: #fff3cd"
+
+        if str(val).startswith("ℹ"):
+            return "background-color: #d1ecf1"
+
+        return ""
+
+    styled_matrix = matrix_df.style.map(colour_cells)
+
+    st.dataframe(
+        styled_matrix,
+        use_container_width=True,
+        height=700
+    )
+
+    csv = matrix_df.to_csv(index=True)
+
+    st.download_button(
+        "Download QA Matrix CSV",
+        csv,
+        file_name="QA_Matrix.csv",
+        mime="text/csv"
+    )if uploaded_file is not None and validation_matrix:
+
+    st.divider()
+
+    st.header("QA Validation Matrix")
+
+    max_rows = max(
+        len(v)
+        for v in validation_matrix.values()
+    )
+
+    matrix_data = {}
+
+    for lot_name, messages in validation_matrix.items():
+
+        padded = messages + [""] * (
+            max_rows - len(messages)
+        )
+
+        matrix_data[lot_name] = padded
+
+    matrix_df = pd.DataFrame(matrix_data)
+
+    matrix_df.index = [
+        f"PDF {i}"
+        for i in range(len(matrix_df))
+    ]
+
+    def colour_cells(val):
+
+        if str(val).startswith("✓"):
+            return "background-color: #d4edda"
+
+        if str(val).startswith("✗"):
+            return "background-color: #f8d7da"
+
+        if str(val).startswith("⚠"):
+            return "background-color: #fff3cd"
+
+        if str(val).startswith("ℹ"):
+            return "background-color: #d1ecf1"
+
+        return ""
+
+    styled_matrix = matrix_df.style.map(colour_cells)
+
+    st.dataframe(
+        styled_matrix,
+        use_container_width=True,
+        height=700
+    )
+
+    csv = matrix_df.to_csv(index=True)
+
+    st.download_button(
+        "Download QA Matrix CSV",
+        csv,
+        file_name="QA_Matrix.csv",
+        mime="text/csv"
+    )
+
 
 st.markdown(
     """
