@@ -1,2 +1,5 @@
 streamlit>=1.35.0
 pypdf>=4.0.0
+from pypdf import PdfWriter, PdfReader                                  
+from pdf2image import convert_from_bytes                                
+pytesseract 
