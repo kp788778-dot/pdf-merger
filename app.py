@@ -3,11 +3,7 @@ import zipfile
 import io
 import re
 from collections import defaultdict
-
 from pypdf import PdfWriter, PdfReader
-
-from pdf2image import convert_from_bytes
-import pytesseract
 
 st.set_page_config(
     page_title="PDF Folder Merger",
@@ -22,8 +18,9 @@ st.markdown("""
 
 1. Download lot folders as a ZIP.
 2. Upload the ZIP below.
-3. PDFs will be merged by folder.
-4. Lot numbers will be validated automatically.
+3. PDFs are automatically sorted numerically.
+4. PDFs are merged by folder.
+5. Lot numbers found in text-based PDFs are validated.
 """)
 
 # ============================================================
@@ -34,8 +31,6 @@ LOT_REGEX = re.compile(
     r"\b[A-Z]{1,4}-[A-Z0-9]+-\d{3,}\b",
     re.IGNORECASE
 )
-
-OCR_PAGE_LIMIT = 5
 
 # ============================================================
 # SORTING
@@ -53,7 +48,7 @@ def pdf_sort_key(path):
     return (9999, filename)
 
 # ============================================================
-# GROUP FILES
+# GROUP PDFS
 # ============================================================
 
 def get_pdf_groups(zip_file):
@@ -83,7 +78,7 @@ def get_pdf_groups(zip_file):
     return dict(groups)
 
 # ============================================================
-# PDF MERGING
+# MERGE PDFS
 # ============================================================
 
 def merge_pdfs(zip_file, pdf_paths):
@@ -94,9 +89,7 @@ def merge_pdfs(zip_file, pdf_paths):
 
         with zip_file.open(path) as f:
 
-            pdf_data = io.BytesIO(f.read())
-
-            reader = PdfReader(pdf_data)
+            reader = PdfReader(io.BytesIO(f.read()))
 
             for page in reader.pages:
                 writer.add_page(page)
@@ -111,7 +104,7 @@ def merge_pdfs(zip_file, pdf_paths):
 # TEXT EXTRACTION
 # ============================================================
 
-def extract_text_from_pdf_bytes(pdf_bytes):
+def extract_text(pdf_bytes):
 
     text = ""
 
@@ -132,42 +125,17 @@ def extract_text_from_pdf_bytes(pdf_bytes):
     return text
 
 # ============================================================
-# OCR FALLBACK
+# LOT EXTRACTION
 # ============================================================
 
-def ocr_pdf_bytes(pdf_bytes):
+def extract_lot_numbers(text):
 
-    text = ""
-
-    try:
-
-        images = convert_from_bytes(
-            pdf_bytes,
-            first_page=1,
-            last_page=OCR_PAGE_LIMIT
+    return sorted(
+        set(
+            match.upper()
+            for match in LOT_REGEX.findall(text)
         )
-
-        for image in images:
-
-            text += pytesseract.image_to_string(image)
-
-    except Exception:
-        pass
-
-    return text
-
-# ============================================================
-# LOT DETECTION
-# ============================================================
-
-def find_lot_numbers(text):
-
-    lots = set()
-
-    for match in LOT_REGEX.findall(text):
-        lots.add(match.upper())
-
-    return lots
+    )
 
 # ============================================================
 # VALIDATION
@@ -175,38 +143,34 @@ def find_lot_numbers(text):
 
 def validate_pdf(pdf_bytes, expected_lot):
 
-    text = extract_text_from_pdf_bytes(pdf_bytes)
+    text = extract_text(pdf_bytes)
 
-    used_ocr = False
-
-    if len(text.strip()) < 50:
-
-        used_ocr = True
-
-        text = ocr_pdf_bytes(pdf_bytes)
-
-    lots_found = find_lot_numbers(text)
-
-    if not lots_found:
+    if not text.strip():
 
         return {
-            "status": "NO LOT FOUND",
-            "lots": [],
-            "ocr": used_ocr
+            "status": "NO_TEXT",
+            "lots": []
         }
 
-    if expected_lot in lots_found:
+    lots = extract_lot_numbers(text)
+
+    if not lots:
+
+        return {
+            "status": "NO_LOT_FOUND",
+            "lots": []
+        }
+
+    if expected_lot in lots:
 
         return {
             "status": "PASS",
-            "lots": sorted(lots_found),
-            "ocr": used_ocr
+            "lots": lots
         }
 
     return {
         "status": "FAIL",
-        "lots": sorted(lots_found),
-        "ocr": used_ocr
+        "lots": lots
     }
 
 # ============================================================
@@ -214,7 +178,7 @@ def validate_pdf(pdf_bytes, expected_lot):
 # ============================================================
 
 uploaded_file = st.file_uploader(
-    "Upload ZIP",
+    "Upload ZIP File",
     type=["zip"]
 )
 
@@ -224,17 +188,21 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
-    with zipfile.ZipFile(
-        io.BytesIO(uploaded_file.read())
-    ) as zf:
+    st.success(f"Loaded: {uploaded_file.name}")
+
+    with zipfile.ZipFile(io.BytesIO(uploaded_file.read())) as zf:
 
         groups = get_pdf_groups(zf)
 
         if not groups:
 
-            st.error("No PDFs found.")
+            st.error("No PDFs found inside ZIP.")
 
         else:
+
+            st.markdown(
+                f"Found **{len(groups)}** folder(s)"
+            )
 
             for folder_name, pdf_paths in sorted(groups.items()):
 
@@ -244,12 +212,14 @@ if uploaded_file is not None:
 
                 expected_lot = folder_name.upper()
 
+                pass_count = 0
+                fail_count = 0
+
                 validation_results = []
 
                 for pdf_path in pdf_paths:
 
                     with zf.open(pdf_path) as f:
-
                         pdf_bytes = f.read()
 
                     result = validate_pdf(
@@ -264,39 +234,48 @@ if uploaded_file is not None:
                         )
                     )
 
-                failures = 0
+                with st.expander("Validation Results"):
 
-                for filename, result in validation_results:
+                    for filename, result in validation_results:
 
-                    status = result["status"]
+                        status = result["status"]
 
-                    if status == "PASS":
+                        if status == "PASS":
 
-                        st.success(
-                            f"✓ {filename}"
-                        )
+                            pass_count += 1
 
-                    elif status == "NO LOT FOUND":
+                            st.success(
+                                f"✓ {filename}"
+                            )
 
-                        st.warning(
-                            f"⚠ {filename} | No lot number found"
-                        )
+                        elif status == "NO_TEXT":
 
-                    else:
+                            st.info(
+                                f"ℹ {filename} (scanned PDF or no text)"
+                            )
 
-                        failures += 1
+                        elif status == "NO_LOT_FOUND":
 
-                        st.error(
-                            f"✗ {filename} | Found {', '.join(result['lots'])}"
-                        )
+                            st.warning(
+                                f"⚠ {filename} (no lot number found)"
+                            )
 
-                st.markdown(
-                    f"**Validation Summary:** "
-                    f"{len(validation_results)-failures}/{len(validation_results)} passed"
+                        else:
+
+                            fail_count += 1
+
+                            st.error(
+                                f"✗ {filename} | Found: {', '.join(result['lots'])}"
+                            )
+
+                st.write(
+                    f"Validation Summary: "
+                    f"{pass_count} passed, "
+                    f"{fail_count} failed"
                 )
 
                 with st.spinner(
-                    f"Merging {folder_name}"
+                    f"Merging {folder_name}..."
                 ):
 
                     merged_pdf = merge_pdfs(
@@ -305,9 +284,19 @@ if uploaded_file is not None:
                     )
 
                 st.download_button(
-                    f"⬇ Download {folder_name}.pdf",
-                    merged_pdf,
+                    label=f"⬇ Download {folder_name}.pdf",
+                    data=merged_pdf,
                     file_name=f"{folder_name}.pdf",
                     mime="application/pdf",
                     key=folder_name
                 )
+
+st.markdown(
+    """
+    <br>
+    <p style='text-align:center;color:grey;font-size:0.8em'>
+    Files are processed in memory only and are not stored.
+    </p>
+    """,
+    unsafe_allow_html=True
+)
