@@ -373,16 +373,18 @@ if uploaded_file is not None and validation_matrix:
         csv,
         file_name="QA_Matrix.csv",
         mime="text/csv"
-    )if uploaded_file is not None and validation_matrix:
-
-    st.divider()
-
-    st.header("QA Validation Matrix")
-
-    max_rows = max(
-        len(v)
-        for v in validation_matrix.values()
     )
+    
+    if uploaded_file is not None and validation_matrix:
+
+        st.divider()
+    
+        st.header("QA Validation Matrix")
+    
+        max_rows = max(
+            len(v)
+            for v in validation_matrix.values()
+        )
 
     matrix_data = {}
 
