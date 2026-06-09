@@ -254,7 +254,7 @@ if uploaded_file is not None:
 
                             pass_count += 1
                         
-                            msg = f"✓ {filename}"
+                            msg = f"{filename}"
                         
                             matrix_messages.append(msg)
                         
@@ -262,7 +262,7 @@ if uploaded_file is not None:
                         
                         elif status == "NO_TEXT":
                         
-                            msg = f"ℹ {filename} (scanned PDF or no text)"
+                            msg = f"{filename} (scanned PDF or no text)"
                         
                             matrix_messages.append(msg)
                         
@@ -270,7 +270,7 @@ if uploaded_file is not None:
                         
                         elif status == "NO_LOT_FOUND":
                         
-                            msg = f"⚠ {filename} (no lot number found)"
+                            msg = f"{filename} (no lot number found)"
                         
                             matrix_messages.append(msg)
                         
@@ -281,7 +281,7 @@ if uploaded_file is not None:
                             fail_count += 1
                         
                             msg = (
-                                f"✗ {filename} | Found: "
+                                f"{filename} | Found: "
                                 f"{', '.join(result['lots'])}"
                             )
                         
@@ -405,18 +405,18 @@ if uploaded_file is not None and validation_matrix:
 
     def colour_cells(val):
 
-        if str(val).startswith("✓"):
-            return "background-color: #d4edda"
-
-        if str(val).startswith("✗"):
+        if "Found" in str(val):
             return "background-color: #f8d7da"
 
-        if str(val).startswith("⚠"):
+        if "no lot number found" in str(val):
             return "background-color: #fff3cd"
 
-        if str(val).startswith("ℹ"):
+        if "scanned PDF or no text" in str(val):
             return "background-color: #d1ecf1"
 
+        else:
+            return "background-color: #d4edda"
+        
         return ""
 
     styled_matrix = matrix_df.style.map(colour_cells)
