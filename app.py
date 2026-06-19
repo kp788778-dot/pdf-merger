@@ -12,16 +12,16 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("PDF Folder Merger")
+st.title("Downer Asphalt Lot Pack Manager")
 
 st.markdown("""
 ### How to use
 
-1. Download lot folders as a ZIP.
+1. Download lot folders containing all documents as a ZIP.
 2. Upload the ZIP below.
-3. PDFs are automatically sorted numerically.
-4. PDFs are merged by folder.
-5. Lot numbers found in text-based PDFs are validated.
+3. PDFs will be automatically sorted numerically.
+4. PDFs are merged by folder they are in.
+5. Lot numbers found in text-based PDFs are checked to ensure no errors have been made.
 """)
 
 # ============================================================
