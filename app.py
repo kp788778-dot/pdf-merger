@@ -7,7 +7,7 @@ from collections import defaultdict
 from pypdf import PdfWriter, PdfReader
 
 st.set_page_config(
-    page_title="PDF Folder Merger",
+    page_title="Downer Asphalt Lot Pack Manager",
     page_icon="📄",
     layout="centered"
 )
